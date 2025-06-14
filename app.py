@@ -3,7 +3,11 @@ import requests, os, base64, uuid, subprocess
 from PIL import Image
 
 app = Flask(__name__)
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+
+# Validar existencia del token
+BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+if not BOT_TOKEN:
+    raise RuntimeError("❌ TELEGRAM_BOT_TOKEN no está definido en las variables de entorno.")
 
 DOWNLOAD_URL = f"https://api.telegram.org/bot{BOT_TOKEN}/getFile?file_id="
 FILE_URL = f"https://api.telegram.org/file/bot{BOT_TOKEN}/"
@@ -24,7 +28,6 @@ def process_video():
     if not file_id:
         return jsonify({"error": "Missing file_id"}), 400
 
-    # Obtener info del archivo
     try:
         info_res = requests.get(DOWNLOAD_URL + file_id)
         info_res.raise_for_status()
@@ -43,7 +46,6 @@ def process_video():
     except Exception as e:
         return jsonify({"error": f"Failed to download video: {str(e)}"}), 500
 
-    # Guardar temporalmente el video
     temp_video = f"/tmp/video_{uuid.uuid4().hex}.mp4"
     with open(temp_video, "wb") as f:
         f.write(video_data.content)
@@ -51,7 +53,6 @@ def process_video():
     output_folder = f"/tmp/frames_{uuid.uuid4().hex}"
     extract_frames(temp_video, output_folder)
 
-    # Codificar frames
     frames = []
     for fname in sorted(os.listdir(output_folder)):
         fpath = os.path.join(output_folder, fname)
@@ -63,4 +64,4 @@ def process_video():
     return jsonify({"frames": frames})
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)) 
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000))) 
